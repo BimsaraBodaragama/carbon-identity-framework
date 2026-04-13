@@ -25,6 +25,15 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
     <modelVersion>4.0.0</modelVersion>
     <artifactId>identity-provider-management</artifactId>
     <packaging>pom</packaging>
