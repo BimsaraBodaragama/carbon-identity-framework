@@ -969,6 +969,10 @@ public class SecondaryUserStoreConfigurationUtil {
             Matcher matcher = InitPattern.matcher(validationConnectionString);
             if (matcher.find()) {
                 String errorMessage = "INIT expressions are not allowed in the connection URL due to security reasons.";
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Connection URL validation failed. Found INIT expression in the connection URL: " +
+                              connectionUrl);
+                }
                 throw new IdentityUserStoreMgtException(errorMessage);
             }
         }
