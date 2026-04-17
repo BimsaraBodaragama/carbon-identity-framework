@@ -46,6 +46,7 @@ import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.UserRealm;
 import org.wso2.carbon.user.core.UserStoreConfigConstants;
 import org.wso2.carbon.user.core.UserStoreManager;
+import org.wso2.carbon.user.core.jdbc.JDBCRealmConstants;
 import org.wso2.carbon.user.core.tracker.UserStoreManagerRegistry;
 import org.wso2.carbon.utils.CarbonUtils;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
@@ -69,6 +70,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.crypto.Cipher;
 import javax.xml.parsers.DocumentBuilder;
@@ -84,6 +87,7 @@ import javax.xml.transform.stream.StreamResult;
 import static org.wso2.carbon.identity.user.store.configuration.utils.UserStoreConfigurationConstant.DEPLOYMENT_DIRECTORY;
 import static org.wso2.carbon.identity.user.store.configuration.utils.UserStoreConfigurationConstant.ENCRYPTED_PROPERTY_MASK;
 import static org.wso2.carbon.identity.user.store.configuration.utils.UserStoreConfigurationConstant.FILE_EXTENSION_XML;
+import static org.wso2.carbon.identity.user.store.configuration.utils.UserStoreConfigurationConstant.INIT_REGEX;
 import static org.wso2.carbon.identity.user.store.configuration.utils.UserStoreConfigurationConstant.USERSTORES;
 
 /**
@@ -106,6 +110,8 @@ public class SecondaryUserStoreConfigurationUtil {
     private static Cipher cipher = null;
     private static String cipherTransformation = null;
     private static Certificate certificate = null;
+
+    private static final Pattern InitPattern = Pattern.compile(INIT_REGEX, Pattern.CASE_INSENSITIVE);
 
     private SecondaryUserStoreConfigurationUtil() {
 
@@ -548,9 +554,11 @@ public class SecondaryUserStoreConfigurationUtil {
             if (UserStoreConfigurationConstant.UNIQUE_ID_CONSTANT.equalsIgnoreCase(propertyDTOName)) {
                 continue;
             }
-
             String propertyDTOValue = propertyDTO.getValue();
             if (propertyDTOValue != null) {
+                if (JDBCRealmConstants.URL.equalsIgnoreCase(propertyDTOName)) {
+                    validateConnectionUrlForInitExpressions(propertyDTOValue);
+                }
                 boolean encrypted = false;
                 if (isPropertyToBeEncrypted(mandatoryProperties, propertyDTOName)) {
                     propertyDTOValue = getPropertyValueIfMasked(secondaryUserStoreProperties, propertyDTOName,
@@ -945,5 +953,24 @@ public class SecondaryUserStoreConfigurationUtil {
             return new IdentityUserStoreClientException(e.getErrorCode(), errorMessage, e);
         }
         return new IdentityUserStoreClientException(errorMessage, e);
+    }
+
+    /**
+     * Validates the connection URL to ensure it does not contain INIT expressions that could pose security risks.
+     *
+     * @param connectionUrl The connection URL to validate.
+     * @throws IdentityUserStoreMgtException If the connection URL contains forbidden INIT expressions.
+     */
+    public static void validateConnectionUrlForInitExpressions(String connectionUrl)
+            throws IdentityUserStoreMgtException {
+
+        if (StringUtils.isNotEmpty(connectionUrl)) {
+            String validationConnectionString = connectionUrl.toLowerCase().replace("\\\\", "");
+            Matcher matcher = InitPattern.matcher(validationConnectionString);
+            if (matcher.find()) {
+                String errorMessage = "INIT expressions are not allowed in the connection URL due to security reasons.";
+                throw new IdentityUserStoreMgtException(errorMessage);
+            }
+        }
     }
 }
